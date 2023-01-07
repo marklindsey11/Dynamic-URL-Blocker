@@ -61,9 +61,6 @@ window.addEventListener('webextFlavor', function() {
         vAPI.webextFlavor.soup.has('firefox');
 }, { once: true });
 
-// https://github.com/uBlockOrigin/uBlock-issues/issues/1553
-const supportsFloc = document.interestCohort instanceof Function;
-
 /******************************************************************************/
 
 const patchLocalRedirectURL = url => url.charCodeAt(0) === 0x2F /* '/' */
@@ -562,7 +559,7 @@ const onHeadersReceived = function(details) {
     if ( injectCSP(fctxt, pageStore, responseHeaders) === true ) {
         modifiedHeaders = true;
     }
-    if ( supportsFloc && foilFloc(fctxt, responseHeaders) ) {
+    if ( injectPP(fctxt, pageStore, responseHeaders) ) {
         modifiedHeaders = true;
     }
 
@@ -1012,18 +1009,31 @@ const injectCSP = function(fctxt, pageStore, responseHeaders) {
 
 /******************************************************************************/
 
-// https://github.com/uBlockOrigin/uBlock-issues/issues/1553
-// https://github.com/WICG/floc#opting-out-of-computation
-
-const foilFloc = function(fctxt, responseHeaders) {
-    const hn = fctxt.getHostname();
-    if ( scriptletFilteringEngine.hasScriptlet(hn, 1, 'no-floc') === false ) {
-        return false;
+const injectPP = function(fctxt, pageStore, responseHeaders) {
+    const permissions = [];
+    const directives = staticNetFilteringEngine.matchAndFetchModifiers(fctxt, 'permissions');
+    if ( directives !== undefined ) {
+        for ( const directive of directives ) {
+            if ( directive.result !== 1 ) { continue; }
+            permissions.push(directive.value.replace('|', ', '));
+        }
     }
+
+    if ( logger.enabled && directives !== undefined ) {
+        fctxt.setRealm('network')
+             .pushFilters(directives.map(a => a.logData()))
+             .toLogger();
+    }
+
+    if ( permissions.length === 0 ) { return; }
+
+    µb.updateToolbarIcon(fctxt.tabId, 0x02);
+
     responseHeaders.push({
-        name: 'Permissions-Policy',
-        value: 'interest-cohort=()' }
-    );
+        name: 'permissions-policy',
+        value: permissions.join(', ')
+    });
+
     return true;
 };
 

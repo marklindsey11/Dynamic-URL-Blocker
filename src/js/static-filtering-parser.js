@@ -2434,20 +2434,21 @@ const OPTTokenMp4                = 26;
 const OPTTokenNoop               = 27;
 const OPTTokenObject             = 28;
 const OPTTokenOther              = 29;
-const OPTTokenPing               = 30;
-const OPTTokenPopunder           = 31;
-const OPTTokenPopup              = 32;
-const OPTTokenRedirect           = 33;
-const OPTTokenRedirectRule       = 34;
-const OPTTokenRemoveparam        = 35;
-const OPTTokenScript             = 36;
-const OPTTokenShide              = 37;
-const OPTTokenTo                 = 38;
-const OPTTokenXhr                = 39;
-const OPTTokenWebrtc             = 40;
-const OPTTokenWebsocket          = 41;
-const OPTTokenMethod             = 42;
-const OPTTokenCount              = 43;
+const OPTTokenPermissions        = 30;
+const OPTTokenPing               = 31;
+const OPTTokenPopunder           = 32;
+const OPTTokenPopup              = 33;
+const OPTTokenRedirect           = 34;
+const OPTTokenRedirectRule       = 35;
+const OPTTokenRemoveparam        = 36;
+const OPTTokenScript             = 37;
+const OPTTokenShide              = 38;
+const OPTTokenTo                 = 39;
+const OPTTokenXhr                = 40;
+const OPTTokenWebrtc             = 41;
+const OPTTokenWebsocket          = 42;
+const OPTTokenMethod             = 43;
+const OPTTokenCount              = 44;
 
 //const OPTPerOptionMask           = 0x0000ff00;
 const OPTCanNegate               = 1 <<  8;
@@ -2540,6 +2541,7 @@ Parser.prototype.OPTTokenMp4 = OPTTokenMp4;
 Parser.prototype.OPTTokenNoop = OPTTokenNoop;
 Parser.prototype.OPTTokenObject = OPTTokenObject;
 Parser.prototype.OPTTokenOther = OPTTokenOther;
+Parser.prototype.OPTTokenPermissions = OPTTokenPermissions;
 Parser.prototype.OPTTokenPing = OPTTokenPing;
 Parser.prototype.OPTTokenPopunder = OPTTokenPopunder;
 Parser.prototype.OPTTokenPopup = OPTTokenPopup;
@@ -2606,6 +2608,7 @@ const netOptionTokenDescriptors = new Map([
     [ 'object', OPTTokenObject | OPTCanNegate | OPTNetworkType | OPTModifiableType | OPTRedirectableType | OPTNonCspableType ],
     /* synonym */ [ 'object-subrequest', OPTTokenObject | OPTCanNegate | OPTNetworkType | OPTModifiableType | OPTRedirectableType | OPTNonCspableType ],
     [ 'other', OPTTokenOther | OPTCanNegate | OPTNetworkType | OPTModifiableType | OPTRedirectableType | OPTNonCspableType ],
+    [ 'permissions', OPTTokenPermissions | OPTMustAssign | OPTAllowMayAssign | OPTModifierType ],
     [ 'ping', OPTTokenPing | OPTCanNegate | OPTNetworkType | OPTModifiableType | OPTNonCspableType | OPTNonRedirectableType ],
     /* synonym */ [ 'beacon', OPTTokenPing | OPTCanNegate | OPTNetworkType | OPTModifiableType | OPTNonCspableType | OPTNonRedirectableType ],
     [ 'popunder', OPTTokenPopunder | OPTNonNetworkType | OPTNonCspableType | OPTNonRedirectableType ],
@@ -2668,6 +2671,7 @@ Parser.netOptionTokenIds = new Map([
     [ 'object', OPTTokenObject ],
     /* synonym */ [ 'object-subrequest', OPTTokenObject ],
     [ 'other', OPTTokenOther ],
+    [ 'permissions', OPTTokenPermissions ],
     [ 'ping', OPTTokenPing ],
     /* synonym */ [ 'beacon', OPTTokenPing ],
     [ 'popunder', OPTTokenPopunder ],
@@ -2717,6 +2721,7 @@ Parser.netOptionTokenNames = new Map([
     [ OPTTokenNoop, '_' ],
     [ OPTTokenObject, 'object' ],
     [ OPTTokenOther, 'other' ],
+    [ OPTTokenPermissions, 'permissions' ],
     [ OPTTokenPing, 'ping' ],
     [ OPTTokenPopunder, 'popunder' ],
     [ OPTTokenPopup, 'popup' ],
@@ -2929,10 +2934,19 @@ const NetOptionsIterator = class {
                 }
             }
         }
-        // `csp=`: only to "csp-able" types, which currently are only
-        // document types.
+        // `csp=`: only document types.
         {
             const i = this.tokenPos[OPTTokenCsp];
+            if ( i !== -1 &&  hasBits(allBits, OPTNonCspableType) ) {
+                optSlices[i] = OPTTokenInvalid;
+                if ( this.interactive ) {
+                    this.parser.errorSlices(optSlices[i+1], optSlices[i+5]);
+                }
+            }
+        }
+        // `permissions=`: only to document types.
+        {
+            const i = this.tokenPos[OPTTokenPermissions];
             if ( i !== -1 &&  hasBits(allBits, OPTNonCspableType) ) {
                 optSlices[i] = OPTTokenInvalid;
                 if ( this.interactive ) {

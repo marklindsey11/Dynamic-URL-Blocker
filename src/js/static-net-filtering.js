@@ -3323,7 +3323,13 @@ class FilterCompiler {
                 if ( val !== undefined && this.reBadCSP.test(val) ) {
                     return false;
                 }
-                this.optionUnitBits |= this.CSP_BIT;
+                this.optionUnitBits |= this.HTTP_HEADERS_BIT;
+                break;
+            case parser.OPTTokenPermissions:
+                if ( this.processModifierOption(id, val) === false ) {
+                    return false;
+                }
+                this.optionUnitBits |= this.HTTP_HEADERS_BIT;
                 break;
             // https://github.com/gorhill/uBlock/issues/2294
             //   Detect and discard filter if domain option contains
@@ -3607,22 +3613,22 @@ class FilterCompiler {
     //   Mind `\b` directives: `/\bads\b/` should result in token being `ads`,
     //   not `bads`.
     extractTokenFromRegex(pattern) {
-        pattern = StaticFilteringParser.utils.regex.toTokenizableStr(pattern);
+        const tokenizable = StaticFilteringParser.utils.regex.toTokenizableStr(pattern);
         this.reToken.lastIndex = 0;
         let bestToken;
         let bestBadness = 0x7FFFFFFF;
         for (;;) {
-            const matches = this.reToken.exec(pattern);
+            const matches = this.reToken.exec(tokenizable);
             if ( matches === null ) { break; }
             const { 0: token, index } = matches;
-            if ( index === 0 || pattern.charAt(index - 1) === '\x01' ) {
+            if ( index === 0 || tokenizable.charAt(index - 1) === '\x01' ) {
                 continue;
             }
             const { lastIndex } = this.reToken;
             if (
                 token.length < MAX_TOKEN_LENGTH && (
-                    lastIndex === pattern.length ||
-                    pattern.charAt(lastIndex) === '\x01'
+                    lastIndex === tokenizable.length ||
+                    tokenizable.charAt(lastIndex) === '\x01'
                 )
             ) {
                 continue;
@@ -3902,7 +3908,7 @@ FilterCompiler.prototype.TO_BIT           = 0b00000000010;
 FilterCompiler.prototype.DENYALLOW_BIT    = 0b00000000100;
 FilterCompiler.prototype.HEADER_BIT       = 0b00000001000;
 FilterCompiler.prototype.STRICT_PARTY_BIT = 0b00000010000;
-FilterCompiler.prototype.CSP_BIT          = 0b00000100000;
+FilterCompiler.prototype.HTTP_HEADERS_BIT = 0b00000100000;
 FilterCompiler.prototype.REMOVEPARAM_BIT  = 0b00001000000;
 FilterCompiler.prototype.REDIRECT_BIT     = 0b00010000000;
 FilterCompiler.prototype.NOT_TYPE_BIT     = 0b00100000000;
